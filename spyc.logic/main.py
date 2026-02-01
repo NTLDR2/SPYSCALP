@@ -8,6 +8,7 @@ Features: Persistent Header, TOML Configuration, File Browser UI
 import sqlite3
 import logging
 import os
+import sys
 from pathlib import Path
 from datetime import datetime
 from textual.app import App, ComposeResult
@@ -15,6 +16,33 @@ from textual.widgets import Footer, Static, Button, DataTable, Label, DirectoryT
 from textual.containers import Horizontal, Vertical, Container
 from textual.binding import Binding
 from textual.screen import Screen
+import zoneinfo
+
+# --- TIMEZONE BOOTSTRAPPING FOR NUITKA/BUNDLED ENV ---
+def bootstrap_timezone():
+    """Ensure ZoneInfo can find timezone data in bundled environments."""
+    if "__compiled__" in globals() or getattr(sys, 'frozen', False):
+        try:
+            # For Nuitka standalone, the dist folder is the executable's directory
+            executable_path = Path(sys.argv[0]).resolve()
+            dist_dir = executable_path.parent
+            # Look for tzdata in various common bundled locations
+            candidate_paths = [
+                dist_dir / "tzdata" / "zoneinfo",
+                dist_dir / "lib" / "tzdata" / "zoneinfo",
+                Path(sys.prefix) / "share" / "zoneinfo",  # Some linux builds
+            ]
+            for tz_path in candidate_paths:
+                if tz_path.exists():
+                    os.environ['TZPATH'] = str(tz_path)
+                    if hasattr(zoneinfo, "reset_tzpath"):
+                        zoneinfo.reset_tzpath()
+                    logging.info(f"Timezone path set to: {tz_path}")
+                    break
+        except Exception as e:
+            logging.error(f"Timezone bootstrap failed: {e}")
+
+bootstrap_timezone()
 
 # Setup logging
 logging.basicConfig(
@@ -23,7 +51,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-VERSION = "1.0.0"
+VERSION = "0.1.4"
 
 class ConfigManager:
     """Manages the SPYSCALP.conf global configuration file."""
@@ -49,11 +77,34 @@ class ConfigManager:
             "[tt_globals]",
             'tt-client-secret = ""',
             'tt-client-ID = ""',
+            'tt-refresh-token = ""',
+            'tt-timezone = "America/New_York"',
             'tt-alias = ""',
             'tt-owner-name = ""'
         ]
         with open(cls.FILENAME, "w") as f:
             f.write("\n".join(content))
+
+    @classmethod
+    def get_tt_credentials(cls) -> dict:
+        """Parse the config file for TastyTrade credentials."""
+        creds = {}
+        try:
+            if not Path(cls.FILENAME).exists():
+                return creds
+            with open(cls.FILENAME, "r") as f:
+                for line in f:
+                    if "=" in line:
+                        key, val = line.split("=", 1)
+                        key = key.strip()
+                        val = val.strip().strip('"').strip("'")
+                        if key == "tt-client-secret": creds["secret"] = val
+                        elif key == "tt-client-ID": creds["id"] = val
+                        elif key == "tt-refresh-token": creds["token"] = val
+                        elif key == "tt-timezone": creds["timezone"] = val
+        except Exception as e:
+            logging.error(f"Config parse error: {e}")
+        return creds
 
 
 class DatabaseManager:
@@ -113,6 +164,7 @@ class HeaderBar(Horizontal):
     """Persistent top-docked header bar with Title and Clock."""
     def compose(self) -> ComposeResult:
         yield Label("SPYSCALP", id="app-title")
+        yield Label("SPY: $0.00", id="header-spy-price")
         yield ClockWidget(id="app-clock")
 
 
@@ -132,12 +184,105 @@ class MainScreen(Screen):
             yield Static("Trading Application with SQLite support", classes="subtitle")
             yield Static("\n")
             yield Button("Open Database Manager", variant="primary", id="nav-to-db")
+            yield Button("Open SPY Trading", variant="success", id="nav-to-trading")
             yield Label("\nPress Q or use the Footer to exit.")
         yield Footer()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "nav-to-db":
             self.app.push_screen("database")
+        elif event.button.id == "nav-to-trading":
+            self.app.push_screen("trading")
+
+
+class TradingScreen(Screen):
+    """Screen for live SPY quotes and options."""
+    BINDINGS = [
+        Binding("escape", "back", "Back"),
+        Binding("r", "refresh", "Refresh"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        yield HeaderBar(classes="global-header")
+        with Vertical(id="trading-container"):
+            with Horizontal(id="quote-header"):
+                yield Static("SPY: $0.00", id="spy-price-display")
+                yield Static("Change: 0.00", id="spy-change-display")
+                yield Static("Vol: 0", id="spy-vol-display")
+            
+            with Vertical(id="options-panel"):
+                yield Static("📈 SPY Options Chain (Calls - Strike - Puts)", classes="panel-title")
+                yield DataTable(id="options-table")
+        yield Footer()
+
+    def on_mount(self) -> None:
+        table = self.query_one("#options-table", DataTable)
+        table.add_columns("Call Bid", "Call Ask", "STRIKE", "Put Bid", "Put Ask")
+        self.update_quotes()
+        self.set_interval(10.0, self.update_quotes) # Increased interval for real API
+
+    def update_quotes(self) -> None:
+        try:
+            creds = ConfigManager.get_tt_credentials()
+            
+            if creds.get("secret") and creds.get("token"):
+                from quotes import TastyTradeQuoteProvider
+                provider = TastyTradeQuoteProvider(
+                    creds["id"], 
+                    creds["secret"], 
+                    creds["token"],
+                    timezone=creds.get("timezone", "America/New_York")
+                )
+            else:
+                from quotes import MockQuoteProvider
+                provider = MockQuoteProvider()
+            
+            # Update Price
+            quote = provider.get_quote("SPY")
+            if quote:
+                price_str = f"SPY: ${quote['last']}"
+                self.query_one("#spy-price-display", Static).update(price_str)
+                self.query_one("#spy-change-display", Static).update(f"Change: {quote['change']}")
+                self.query_one("#spy-vol-display", Static).update(f"Vol: {quote['volume']}")
+                
+                # Update Header (Global)
+                try:
+                    for header_price in self.app.query("#header-spy-price"):
+                        header_price.update(price_str)
+                except:
+                    pass
+            
+            # Update Options
+            table = self.query_one("#options-table", DataTable)
+            table.clear()
+            options = provider.get_option_chain("SPY")
+            
+            # Group by strike
+            strikes = {}
+            for opt in options:
+                s = opt["strike"]
+                if s not in strikes: strikes[s] = {"CALL": None, "PUT": None}
+                strikes[s][opt["type"]] = opt
+            
+            for s in sorted(strikes.keys()):
+                c = strikes[s]["CALL"]
+                p = strikes[s]["PUT"]
+                table.add_row(
+                    f"${c['bid']}" if c else "-",
+                    f"${c['ask']}" if c else "-",
+                    f"[b]{s}[/b]",
+                    f"${p['bid']}" if p else "-",
+                    f"${p['ask']}" if p else "-"
+                )
+        except Exception as e:
+            logging.error(f"Quote update error: {e}")
+            self.notify(f"Update Error: {e}", severity="error")
+
+    def action_refresh(self) -> None:
+        self.update_quotes()
+
+    def action_back(self) -> None:
+        self.app.pop_screen()
 
 
 class DatabaseScreen(Screen):
@@ -226,7 +371,8 @@ class SpyscalpApp(App):
         padding: 0 1;
     }
     
-    #app-title { width: 1fr; }
+    #app-title { width: auto; }
+    #header-spy-price { margin-left: 10; width: 1fr; }
     #app-clock { width: auto; text-align: right; }
     
     #db-info-bar {
@@ -264,6 +410,18 @@ class SpyscalpApp(App):
     }
     
     .panel-title { text-style: bold underline; margin-bottom: 1; }
+    
+    #trading-container { padding: 1; }
+    #quote-header {
+        height: 3;
+        background: $boost;
+        padding: 1;
+        margin-bottom: 1;
+        border: solid $primary;
+    }
+    #quote-header Static { width: 1fr; text-align: center; text-style: bold; }
+    #options-panel { height: 1fr; }
+    
     Button { margin: 1 0; }
     """
     
@@ -282,6 +440,7 @@ class SpyscalpApp(App):
     def on_mount(self) -> None:
         self.install_screen(MainScreen(), name="main")
         self.install_screen(DatabaseScreen(), name="database")
+        self.install_screen(TradingScreen(), name="trading")
         self.push_screen("main")
     
     def action_stop(self) -> None:

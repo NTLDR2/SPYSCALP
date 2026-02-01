@@ -1,2 +1,7 @@
 
 SPYSCALP.conf
+nuitka_dist/
+diag_tz.py
+reproduce_error.py
+*.db
+*.log
