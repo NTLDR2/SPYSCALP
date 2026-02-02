@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <Fragment>
+        <UI>
+            <Dialog Id="CustomMaintenanceTypeDlg" Width="370" Height="270" Title="[ProductName] Setup">
+                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" TabSkip="no" Text="WixUI_Bmp_Banner" />
+                <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+                <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+                <Control Id="Title" Type="Text" X="15" Y="6" Width="240" Height="15" Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Change, repair, or remove installation" />
+                <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="20" Transparent="yes" NoPrefix="yes" Text="Select the operation you wish to perform." />
+
+                <!-- Grid Layout (Row 1) -->
+                <Control Id="ChangeIconControl" Type="Icon" X="25" Y="60" Width="32" Height="32" FixedSize="yes" IconSize="32" Text="ChangeIcon" />
+                <Control Id="ChangeButton" Type="PushButton" X="65" Y="68" Width="80" Height="17" ToolTip="Change installation" Default="yes" Text="&amp;Change">
+                    <Publish Property="WixUI_InstallMode" Value="Change">1</Publish>
+                    <Publish Event="NewDialog" Value="InstallDirDlg">1</Publish>
+                </Control>
+                <Control Id="ChangeText" Type="Text" X="25" Y="100" Width="140" Height="30" NoPrefix="yes" Text="Modify installed features and options." />
+
+                <Control Id="RepairIconControl" Type="Icon" X="195" Y="60" Width="32" Height="32" FixedSize="yes" IconSize="32" Text="RepairIcon" />
+                <Control Id="RepairButton" Type="PushButton" X="235" Y="68" Width="80" Height="17" ToolTip="Repair installation" Text="&amp;Repair">
+                    <Publish Property="WixUI_InstallMode" Value="Repair">1</Publish>
+                    <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+                </Control>
+                <Control Id="RepairText" Type="Text" X="195" Y="100" Width="140" Height="30" NoPrefix="yes" Text="Fix missing or corrupt files and registry entries." />
+
+                <!-- Grid Layout (Row 2) -->
+                <Control Id="RemoveIconControl" Type="Icon" X="25" Y="145" Width="32" Height="32" FixedSize="yes" IconSize="32" Text="RemoveIcon" />
+                <Control Id="RemoveButton" Type="PushButton" X="65" Y="153" Width="80" Height="17" ToolTip="Remove installation" Text="&amp;Remove">
+                    <Publish Property="WixUI_InstallMode" Value="Remove">1</Publish>
+                    <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+                </Control>
+                <Control Id="RemoveText" Type="Text" X="25" Y="185" Width="140" Height="30" NoPrefix="yes" Text="Completely remove [ProductName] from your computer." />
+
+                <Control Id="UpdateIconControl" Type="Icon" X="195" Y="145" Width="32" Height="32" FixedSize="yes" IconSize="32" Text="UpdateIcon" />
+                <Control Id="UpdateButton" Type="PushButton" X="235" Y="153" Width="80" Height="17" ToolTip="Run LiveUpdate" Text="Live&amp;Update">
+                    <Publish Event="DoAction" Value="SetWixShellExecTarget">1</Publish>
+                    <Publish Event="DoAction" Value="LaunchApplication">1</Publish>
+                    <Publish Event="EndDialog" Value="Return">1</Publish>
+                </Control>
+                <Control Id="UpdateText" Type="Text" X="195" Y="185" Width="140" Height="30" NoPrefix="yes" Text="Launch the utility to check for software updates." />
+
+                <!-- Navigation -->
+                <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Text="&amp;Back" />
+                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17" Disabled="yes" Text="&amp;Next" />
+                <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Cancel="yes" Text="Cancel">
+                    <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+                </Control>
+            </Dialog>
+        </UI>
+    </Fragment>
+</Wix>
