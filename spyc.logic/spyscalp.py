@@ -234,8 +234,8 @@ class TradingScreen(Screen):
                     timezone=creds.get("timezone", "America/New_York")
                 )
             else:
-                from quotes import MockQuoteProvider
-                provider = MockQuoteProvider()
+                 self.notify("Missing TastyTrade credentials in SPYSCALP.conf", severity="error")
+                 return
             
             # Update Price
             quote = provider.get_quote("SPY")

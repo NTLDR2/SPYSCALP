@@ -4,14 +4,15 @@ import logging
 from datetime import datetime, timedelta
 from typing import List, Dict
 
+
+# Enforce usage of TastyTrade SDK
 try:
     from tastytrade import Session
     from tastytrade.instruments import NestedOptionChain, OptionType
     from tastytrade.market_data import get_market_data, get_market_data_by_type
     from tastytrade.order import InstrumentType
-    HAS_TT_SDK = True
 except ImportError:
-    HAS_TT_SDK = False
+    raise ImportError("TastyTrade SDK is required but not installed.")
 
 class QuoteProvider:
     """Base class for quote providers."""
@@ -21,51 +22,12 @@ class QuoteProvider:
     def get_option_chain(self, symbol: str) -> list:
         raise NotImplementedError
 
-class MockQuoteProvider(QuoteProvider):
-    """Mock provider for testing without API keys."""
-    
-    def get_quote(self, symbol: str) -> dict:
-        return {
-            "symbol": symbol,
-            "last": round(490.0 + random.uniform(-1, 1), 2),
-            "change": round(random.uniform(-0.5, 0.5), 2),
-            "volume": random.randint(1000000, 5000000),
-            "timestamp": datetime.now().strftime("%H:%M:%S")
-        }
-
-    def get_option_chain(self, symbol: str) -> list:
-        # Generate some mock options
-        options = []
-        base_price = 490
-        expiry = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
-        
-        for i in range(-5, 6):
-            strike = base_price + i
-            # Call
-            options.append({
-                "strike": strike,
-                "type": "CALL",
-                "bid": round(random.uniform(1, 5), 2),
-                "ask": round(random.uniform(1, 5), 2),
-                "expiry": expiry
-            })
-            # Put
-            options.append({
-                "strike": strike,
-                "type": "PUT",
-                "bid": round(random.uniform(1, 5), 2),
-                "ask": round(random.uniform(1, 5), 2),
-                "expiry": expiry
-            })
-        return options
 
 class TastyTradeQuoteProvider(QuoteProvider):
     """Real provider using TastyTrade API."""
     
     def __init__(self, client_id: str, client_secret: str, refresh_token: str, timezone: str = "America/New_York"):
-        if not HAS_TT_SDK:
-            raise ImportError("tastytrade SDK not installed")
-        
+
         # Set the global timezone for the SDK
         try:
             import tastytrade.utils
