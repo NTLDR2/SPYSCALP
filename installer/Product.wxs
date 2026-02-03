@@ -1,18 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-    <Product Id="*" Name="SPYSCALP" Language="1033" Version="0.1.5" Manufacturer="SPYSCALP Developers" UpgradeCode="7d6c6a1e-8e9a-4f51-a1d2-b3c4d5e6f7a8">
-        <Package InstallerVersion="200" Compressed="yes" />
+    <Product Id="*" Name="SPYSCALP" Language="1033" Version="0.1.6" Manufacturer="SPYSCALP Developers" UpgradeCode="7d6c6a1e-8e9a-4f51-a1d2-b3c4d5e6f7a8">
+        <Package InstallerVersion="200" Compressed="yes" InstallScope="perUser" />
 
         <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
         <MediaTemplate EmbedCab="yes" />
 
         <!-- Dual Scope Properties & Variables -->
-        <Property Id="ALLUSERS" Value="2" />
-        <Property Id="MSIINSTALLPERUSER" Value="0" />
-        <Property Id="WixAppFolder" Value="WixPerMachineFolder" />
+        <Property Id="MSIINSTALLPERUSER" Value="1" />
+        <Property Id="WixAppFolder" Value="WixPerUserFolder" />
         <WixVariable Id="WixUISupportPerUser" Value="1" />
-        <WixVariable Id="WixUISupportPerMachine" Value="1" />
-        <SetProperty Id="WixPerMachineFolder" Value="[ProgramFilesFolder]SPYSCALP" After="AppSearch" />
+        <WixVariable Id="WixUISupportPerMachine" Value="0" />
         <SetProperty Id="WixPerUserFolder" Value="[LocalAppDataFolder]SPYSCALP" After="AppSearch" />
 
         <Feature Id="ProductFeature" Title="SPYSCALP Main Application" Level="1">
@@ -34,18 +32,14 @@
         <UI>
             <UIRef Id="WixUI_InstallDir" />
             <!-- Custom Maintenance Flow -->
+            <!-- Custom Maintenance Flow
             <Publish Dialog="MaintenanceWelcomeDlg" Control="Next" Event="NewDialog" Value="CustomMaintenanceTypeDlg">1</Publish>
             <Publish Dialog="CustomMaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg">1</Publish>
-
-            <!-- Inject InstallScopeDlg into the WixUI_InstallDir flow -->
-            <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="InstallScopeDlg" Order="2">LicenseAccepted = "1"</Publish>
-            <Publish Dialog="InstallScopeDlg" Control="Back" Event="NewDialog" Value="LicenseAgreementDlg" Order="2">1</Publish>
-            <Publish Dialog="InstallScopeDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg" Order="2">1</Publish>
-            <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="InstallScopeDlg" Order="2">1</Publish>
-
-            <!-- Update INSTALLFOLDER based on selection in InstallScopeDlg -->
-            <Publish Dialog="InstallScopeDlg" Control="Next" Property="INSTALLFOLDER" Value="[WixPerUserFolder]" Order="3">WixAppFolder = "WixPerUserFolder"</Publish>
-            <Publish Dialog="InstallScopeDlg" Control="Next" Property="INSTALLFOLDER" Value="[WixPerMachineFolder]" Order="3">WixAppFolder = "WixPerMachineFolder"</Publish>
+            -->
+            
+            <!-- InstallDirDlg Logic -->
+            <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="InstallDirDlg">1</Publish>
+            <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="WelcomeDlg">1</Publish>
         </UI>
         <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
         <WixVariable Id="WixUILicenseRtf" Value="EULA.rtf" />
@@ -59,7 +53,7 @@
         <SetDirectory Id="INSTALLFOLDER" Value="[WixPerUserFolder]" Sequence="both">MSIINSTALLPERUSER = 1</SetDirectory>
 
         <Directory Id="TARGETDIR" Name="SourceDir">
-            <Directory Id="ProgramFilesFolder">
+            <Directory Id="ProgramFiles64Folder">
                 <Directory Id="INSTALLFOLDER" Name="SPYSCALP" />
             </Directory>
             <Directory Id="ProgramMenuFolder">

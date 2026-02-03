@@ -33,7 +33,7 @@ echo.
 :: --include-package: Force inclusion of critical packages
 :: --output-dir: Output to nuitka_dist
 :: --force-stdout-spec: Ensure output is visible
-nuitka --onefile --enable-console --include-package=textual --include-package=rich --include-package=rich._unicode_data --include-package=tastytrade --include-package=zoneinfo --include-package=pytz --windows-icon-from-ico=spyscalp.ico --output-dir=nuitka_dist spyscalp.py
+nuitka --onefile --enable-console --include-package=textual --include-package=rich --include-package=rich._unicode_data --include-package=tastytrade --include-package=zoneinfo --include-package=pytz --include-package=tzdata --windows-icon-from-ico=spyscalp.ico --include-data-file=spyscalp.ico=spyscalp.ico --include-data-file=spyscalp_logo.png=spyscalp_logo.png --output-dir=nuitka_dist spyscalp.py
 
 if %errorlevel% neq 0 (
     echo.

@@ -6,10 +6,10 @@ echo [INFO] Compiling WiX sources...
 candle Product.wxs CustomMaintenanceTypeDlg.wxs
 
 echo [INFO] Linking MSI...
-light Product.wixobj CustomMaintenanceTypeDlg.wixobj -ext WixUIExtension -ext WixUtilExtension -out SPYSCALP_v0.1.5_Setup.msi
+light Product.wixobj CustomMaintenanceTypeDlg.wixobj -ext WixUIExtension -ext WixUtilExtension -out SPYSCALP_v0.1.6_Setup.msi
 
 if %ERRORLEVEL% EQU 0 (
-    echo [SUCCESS] Installer built: SPYSCALP_v0.1.5_Setup.msi
+    echo [SUCCESS] Installer built: SPYSCALP_v0.1.6_Setup.msi
 ) else (
     echo [ERROR] Build failed.
 )
